@@ -11,7 +11,7 @@ import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 import akka.stream.ActorMaterializer
 import com.applaudo.akkalms.models.requests.AddFinanceRequest
-import com.applaudo.akkalms.models.responses.{AddFinanceResponse, AddIncomeResponse}
+import com.applaudo.akkalms.models.responses.{FinanceResponse, IncomeResponse}
 
 import scala.concurrent.duration._
 import sttp.tapir._
@@ -38,14 +38,14 @@ object PersistentPersonalFinance {
 class PersistentPersonalFinance extends Actor with ActorLogging {
   import PersistentPersonalFinance._
 
-  var finances = Map[String, AddFinanceResponse]()
+  var finances = Map[String, FinanceResponse]()
 
   override def receive: Receive = {
     case AddFinance(finance) =>
       log.info(s"trying to add finance $finance")
-      val addIncomeResponse: AddIncomeResponse = new AddIncomeResponse(1, finance.incomes.head.incomeType, finance.incomes.head.amount, finance.incomes.head.currency, "")
-      val list: List[AddIncomeResponse] = List(addIncomeResponse)
-      val addFinanceResponse: AddFinanceResponse = new AddFinanceResponse(1, finance.year, finance.month, list)
+      val addIncomeResponse: IncomeResponse = new IncomeResponse(1, finance.incomes.head.incomeType, finance.incomes.head.amount, finance.incomes.head.currency, None)
+      val list: List[IncomeResponse] = List(addIncomeResponse)
+      val addFinanceResponse: FinanceResponse = new FinanceResponse(1, finance.year, finance.month, list)
       sender() ! addFinanceResponse
   }
 }
@@ -68,7 +68,7 @@ object MarshallJSON extends App {
   /*implicit lazy val addFinanceRequestSchema: Schema[AddFinanceRequest] = //Schema.derive
   implicitly[Derived[Schema[AddFinanceRequest]]].value.modify(_.year)(_.description("How many fruits?"))*/
 
-  val createFinanceEndpoint: Endpoint[Unit, AddFinanceRequest, Unit, (AddFinanceResponse, StatusCode), Any] =
+  val createFinanceEndpoint: Endpoint[Unit, AddFinanceRequest, Unit, (FinanceResponse, StatusCode), Any] =
     baseEndpoint
       .post
       .in("finance")
@@ -80,17 +80,17 @@ object MarshallJSON extends App {
           //.example(Any, "")
       )
       //.out(statusCode.description(StatusCode.Created, "Created"))
-      .out(jsonBody[AddFinanceResponse])
+      .out(jsonBody[FinanceResponse])
       .out(statusCode.description(StatusCode.Created, "Created"))
       //.errorOut(statusCode)
 
 
-def createFinanceLogic(finance: AddFinanceRequest): Future[Either[Unit, (AddFinanceResponse, StatusCode)]] =
+def createFinanceLogic(finance: AddFinanceRequest): Future[Either[Unit, (FinanceResponse, StatusCode)]] =
   Future {
-    val addIncomeResponse: AddIncomeResponse = AddIncomeResponse(1, finance.incomes.head.incomeType, finance.incomes.head.amount, finance.incomes.head.currency, "")
-    val list: List[AddIncomeResponse] = List(addIncomeResponse)
-    val addFinanceResponse: AddFinanceResponse = AddFinanceResponse(1, finance.year, finance.month, list)
-    Right[Unit, (AddFinanceResponse, StatusCode)](addFinanceResponse -> StatusCode.Created)
+    val addIncomeResponse: IncomeResponse = IncomeResponse(1, finance.incomes.head.incomeType, finance.incomes.head.amount, finance.incomes.head.currency, None)
+    val list: List[IncomeResponse] = List(addIncomeResponse)
+    val addFinanceResponse: FinanceResponse = FinanceResponse(1, finance.year, finance.month, list)
+    Right[Unit, (FinanceResponse, StatusCode)](addFinanceResponse -> StatusCode.Created)
   }
 
   /*//def countCharacters(req: AddFinanceRequest): Future[Either[StatusCode, Future[AddFinanceResponse]]] = {
