@@ -1,7 +1,7 @@
 package com.applaudo.akkalms.modules
 
 import akka.actor.ActorSystem
-import com.applaudo.akkalms.controllers.{BaseController, FinanceController}
+import com.applaudo.akkalms.controllers.{BaseController, ExpenseController, FinanceController}
 import com.softwaremill.macwire.wire
 import com.typesafe.config.{Config, ConfigFactory}
 
@@ -14,4 +14,5 @@ trait MainModule {
   lazy val config: Config = ConfigFactory.load() // for macwire not necessary to wire everything, having required component in scope is enough.
   lazy val baseController = wire[BaseController]
   lazy val financeController = wire[FinanceController]
+  lazy val expenseController = wire[ExpenseController]
 }
