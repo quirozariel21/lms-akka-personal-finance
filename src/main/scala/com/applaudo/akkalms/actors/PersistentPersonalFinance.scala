@@ -10,6 +10,8 @@ import sttp.tapir.server.akkahttp.AkkaHttpServerInterpreter
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 import akka.stream.ActorMaterializer
+import com.applaudo.akkalms.db.PersonalFinanceDB
+import com.applaudo.akkalms.db.PersonalFinanceDB.AddFinance
 import com.applaudo.akkalms.models.requests.AddFinanceRequest
 import com.applaudo.akkalms.models.responses.{FinanceResponse, IncomeResponse}
 
@@ -23,31 +25,34 @@ import io.circe.generic.auto._
 import sttp.model.StatusCode
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 
+import scala.collection.mutable.ListBuffer
+import scala.util.{Failure, Success}
+
 // state
 
 
 
 
 
-object PersistentPersonalFinance {
+/*object PersistentPersonalFinance {
   case class AddFinance(finance: AddFinanceRequest)
   case object OperationSuccess
 
-}
+}*/
 
-class PersistentPersonalFinance extends Actor with ActorLogging {
-  import PersistentPersonalFinance._
+class PersistentPersonalFinance {//extends Actor with ActorLogging {
+  //import PersistentPersonalFinance._
 
-  var finances = Map[String, FinanceResponse]()
+  //var finances = Map[String, FinanceResponse]()
 
-  override def receive: Receive = {
+  /*override def receive: Receive = {
     case AddFinance(finance) =>
       log.info(s"trying to add finance $finance")
       val addIncomeResponse: IncomeResponse = new IncomeResponse(1, finance.incomes.head.incomeType, finance.incomes.head.amount, finance.incomes.head.currency, None)
       val list: List[IncomeResponse] = List(addIncomeResponse)
-      val addFinanceResponse: FinanceResponse = new FinanceResponse(1, finance.year, finance.month, list)
+      val addFinanceResponse: FinanceResponse = FinanceResponse(1, finance.year, finance.month, list)
       sender() ! addFinanceResponse
-  }
+  }*/
 }
 
 object MarshallJSON extends App {
@@ -55,11 +60,11 @@ object MarshallJSON extends App {
   implicit val system = ActorSystem("MarshallJSON")
   //implicit val materializer = ActorMaterializer()
   import system.dispatcher
-  import PersistentPersonalFinance._
+  import PersonalFinanceDB._
 
-  val rtjvmGameMap = system.actorOf(Props[PersistentPersonalFinance], "rockTheJVMGameAreaMap")
+  val rtjvmGameMap = system.actorOf(Props[PersonalFinanceDB], "rockTheJVMGameAreaMap")
 
-  implicit val timeout = Timeout(2 seconds)
+  implicit val timeout = Timeout(5 seconds)
 
   //val addFinanceRequest: EndpointIO[AddFinanceRequest] = jsonBody[AddFinanceRequest]
 
@@ -77,20 +82,45 @@ object MarshallJSON extends App {
       .in(
         jsonBody[AddFinanceRequest]//.schema
           .description("Finance object that needs to be added")
-          //.example(Any, "")
       )
-      //.out(statusCode.description(StatusCode.Created, "Created"))
       .out(jsonBody[FinanceResponse])
       .out(statusCode.description(StatusCode.Created, "Created"))
-      //.errorOut(statusCode)
 
 
 def createFinanceLogic(finance: AddFinanceRequest): Future[Either[Unit, (FinanceResponse, StatusCode)]] =
   Future {
-    val addIncomeResponse: IncomeResponse = IncomeResponse(1, finance.incomes.head.incomeType, finance.incomes.head.amount, finance.incomes.head.currency, None)
-    val list: List[IncomeResponse] = List(addIncomeResponse)
-    val addFinanceResponse: FinanceResponse = FinanceResponse(1, finance.year, finance.month, list)
-    Right[Unit, (FinanceResponse, StatusCode)](addFinanceResponse -> StatusCode.Created)
+
+    val optionFuture: Future[FinanceResponse] = (rtjvmGameMap ? AddFinance(finance)).mapTo[FinanceResponse]
+    println(s"RESULT1 ====>> " + optionFuture)
+    val entityFuture = optionFuture.map { op =>
+      FinanceResponse(op.id, op.year, op.month, op.incomes)
+    }
+    println(s"RESULT2 ====>> " + entityFuture)
+
+    entityFuture.onComplete {
+      case Success(value) => println(s" SUCCESS $value")
+      case Failure(exception) => println(s"Failure $exception")
+    }
+
+    val incomes = new ListBuffer[IncomeResponse]()
+    finance.incomes.foreach{ in =>
+      val incomeResponse = IncomeResponse(1, in.incomeType, in.amount, in.currency, in.note)
+      incomes += incomeResponse
+    }
+
+    val financeResponse: FinanceResponse = FinanceResponse(1,
+      finance.year, finance.month, incomes.toList)
+
+    Thread.sleep(9000)
+    Right[Unit, (FinanceResponse, StatusCode)](financeResponse -> StatusCode.Created)
+
+    //Right[Unit, (FinanceResponse, StatusCode)](entityFuture.value.get.get -> StatusCode.Created)
+    /*entityFuture.onComplete{
+      case Success(value) => Right[Unit, (FinanceResponse, StatusCode)](value -> StatusCode.Created)
+      //case Failure(exception) => Left[Unit, (FinanceResponse, StatusCode)](value -> StatusCode.Created)
+
+    }*/
+    //Right[Unit, (FinanceResponse, StatusCode)](entityFuture -> StatusCode.Created)
   }
 
   /*//def countCharacters(req: AddFinanceRequest): Future[Either[StatusCode, Future[AddFinanceResponse]]] = {

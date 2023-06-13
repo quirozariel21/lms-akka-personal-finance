@@ -8,7 +8,9 @@ lazy val akkaVersion = "2.8.2"
 lazy val akkaHttpVersion = "10.5.2"
 lazy val tapirVersion = "1.4.0"
 lazy val macwireVersion = "2.5.8"
-
+lazy val doobieVersion = "1.0.0-RC1"
+lazy val PureConfigVersion = "0.17.1"
+lazy val FlywayVersion = "9.2.0"
 
 // Run in a separate JVM, to make sure sbt waits until all threads have
 // finished before returning.
@@ -37,7 +39,27 @@ libraryDependencies ++= Seq(
 
   "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
 
-  "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
+  //Doobie
+  "org.tpolecat" %% "doobie-core"      % doobieVersion,
+
+  // And add any of these as needed
+  "org.tpolecat" %% "doobie-hikari"    % doobieVersion,          // HikariCP transactor.
+  "org.tpolecat" %% "doobie-postgres"  % doobieVersion,          // Postgres driver 42.3.1 + type mappings.
+  "org.tpolecat" %% "doobie-specs2"    % doobieVersion % "test", // Specs2 support for typechecking statements.
+  "org.tpolecat" %% "doobie-scalatest" % doobieVersion % "test",  // ScalaTest support for typechecking statements.
+
+  //Flyway
+  "org.flywaydb"          %  "flyway-core"          % FlywayVersion,
+
+  "io.estatico" %% "newtype" % "0.4.4",
+
+  //Pureconfig
+  "com.github.pureconfig" %% "pureconfig"             % PureConfigVersion,
+  "com.github.pureconfig" %% "pureconfig-cats-effect" % PureConfigVersion,
+
+
+
+"com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
   "org.scalatest" %% "scalatest" % "3.1.0" % Test

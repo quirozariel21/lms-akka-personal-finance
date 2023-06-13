@@ -1,21 +1,26 @@
 package com.applaudo.akkalms.controllers
 
+import akka.http.scaladsl.server
 import akka.http.scaladsl.server.Route
+import com.applaudo.akkalms.dao.CategoryDaoImpl
+import com.applaudo.akkalms.models.errors.ErrorInfo
 import com.applaudo.akkalms.models.forms.GetFinancesEndpointArguments
 import com.applaudo.akkalms.models.requests.{AddFinanceRequest, AddIncomeRequest, UpdateFinanceRequest, UpdateIncomeRequest}
 import com.applaudo.akkalms.models.responses.{FinanceResponse, IncomeResponse}
+import com.applaudo.akkalms.models.errors.{BadRequest, ErrorInfo, InternalServerError, NotFound}
 import sttp.tapir.json.circe.jsonBody
-import sttp.tapir.{Endpoint, EndpointInput, statusCode}
+import sttp.tapir.{Endpoint, EndpointInput, oneOf, oneOfVariant, statusCode, stringBody}
 import sttp.tapir.generic.auto._
 import io.circe.generic.auto._
 import sttp.model.StatusCode
-import sttp.tapir.server.akkahttp.AkkaHttpServerInterpreter
+import sttp.tapir.server.akkahttp.{AkkaHttpServerInterpreter, AkkaHttpServerOptions}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class FinanceController(baseController: BaseController)(implicit ec: ExecutionContext) {
 
-  val createFinanceEndpoint: Endpoint[Unit, AddFinanceRequest, Unit, (FinanceResponse, StatusCode), Any] =
+class FinanceController(baseController: BaseController, query: CategoryDaoImpl)(implicit ec: ExecutionContext) {
+
+  val createFinanceEndpoint: Endpoint[Unit, AddFinanceRequest, ErrorInfo, (FinanceResponse, StatusCode), Any] =
     baseController.baseEndpoint()
       .post
       .in("finance")
@@ -28,6 +33,13 @@ class FinanceController(baseController: BaseController)(implicit ec: ExecutionCo
       )
       .out(jsonBody[FinanceResponse])
       .out(statusCode.description(StatusCode.Created, "Successful created the personal finance"))
+      .errorOut(
+        oneOf[ErrorInfo](
+          //oneOfVariant(statusCode(StatusCode.NotFound).and(jsonBody[NotFound].description("When something not found"))),
+          //oneOfVariant(statusCode(StatusCode.BadRequest).and(jsonBody[BadRequest].description("Bad request"))),
+          oneOfVariant(statusCode(StatusCode.InternalServerError).and(jsonBody[InternalServerError].description("Internal Server Error")))
+        )
+      )
   //.errorOut(statusCode)
 
   val patchFinanceEndpoint: Endpoint[Unit, UpdateFinanceRequest, Unit, (FinanceResponse, StatusCode), Any] =
@@ -57,9 +69,27 @@ class FinanceController(baseController: BaseController)(implicit ec: ExecutionCo
       )
 
 
+  //val customDecodeFailureHandler: DecodeFailureHandler = ???
+
+/*  val customServerOptions: AkkaHttpServerOptions = AkkaHttpServerOptions
+    .customiseInterceptors
+    //.decodeFailureHandler(customDecodeFailureHandler)
+    .decodeFailureHandler(ctx => {
+      ctx.failingInput match {
+        // when defining how a decode failure should be handled, we need to describe the output to be used, and
+        // a value for this output
+
+        case EndpointInput.derived. => Some(ValuedEndpointOutput(stringBody, StatusCode.Created))
+        case EndpointInput.Query(_, _, _, _) => Some(ValuedEndpointOutput(stringBody, "Incorrect format!!!"))
+        // in other cases, using the default behavior
+        case _ => DefaultDecodeFailureHandler.default(ctx)
+      }
+    })
+    .options*/
   // converting an endpoint to a route (providing server-side logic); extension method comes from imported packages
   val createFinanceRoute: Route =
     AkkaHttpServerInterpreter().toRoute(createFinanceEndpoint.serverLogic(createFinanceLogic))
+    //AkkaHttpServerInterpreter(customServerOptions).toRoute(createFinanceEndpoint.serverLogic(createFinanceLogic))
 
   val updateFinanceRoute: Route =
     AkkaHttpServerInterpreter().toRoute(patchFinanceEndpoint.serverLogic(updateFinanceLogic))
@@ -67,12 +97,17 @@ class FinanceController(baseController: BaseController)(implicit ec: ExecutionCo
   val getFinanceRoute: Route =
     AkkaHttpServerInterpreter().toRoute(getFinanceEndpoint.serverLogic(getFinanceLogic))
 
-  def createFinanceLogic(finance: AddFinanceRequest): Future[Either[Unit, (FinanceResponse, StatusCode)]] =
+  def createFinanceLogic(finance: AddFinanceRequest): Future[Either[ErrorInfo, (FinanceResponse, StatusCode)]] =
     Future {
       val addIncomeResponse: IncomeResponse = IncomeResponse(1, finance.incomes.head.incomeType, finance.incomes.head.amount, finance.incomes.head.currency, finance.incomes.head.note)
       val list: List[IncomeResponse] = List(addIncomeResponse)
       val addFinanceResponse: FinanceResponse = FinanceResponse(1, finance.year, finance.month, list)
-      Right[Unit, (FinanceResponse, StatusCode)](addFinanceResponse -> StatusCode.Created)
+      if(1 == 1)
+        Right((addFinanceResponse -> StatusCode.Created))
+        //Right[Unit, (FinanceResponse, StatusCode)](addFinanceResponse -> StatusCode.Created)
+
+      else
+        Left(InternalServerError("Some error"))
     }
 
   def updateFinanceLogic(finance: UpdateFinanceRequest): Future[Either[Unit, (FinanceResponse, StatusCode)]] =
@@ -85,6 +120,13 @@ class FinanceController(baseController: BaseController)(implicit ec: ExecutionCo
 
   def getFinanceLogic(queryArgs: GetFinancesEndpointArguments): Future[Either[Unit, List[FinanceResponse]]] =
     Future {
+
+      val categories = query.getCategories()
+      println(categories.size)
+      println(categories)
+      //categories.foreach( c => c.)
+
+
       val income = IncomeResponse(1, "SALARY", 1000.27, "USD", None)
       val financeResp = FinanceResponse(1, 2023, "JANUARY", List(income))
       val response = List(financeResp)

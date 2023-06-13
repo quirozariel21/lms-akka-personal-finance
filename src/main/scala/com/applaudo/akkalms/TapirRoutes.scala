@@ -21,7 +21,8 @@ class TapirRoutes extends LazyLogging with MainModule {
   import actorSystem.dispatcher
   val endpointList = List(
     financeController.financeRoutes,
-    expenseController.expenseRoutes
+    expenseController.expenseRoutes,
+    categoryController.categoryRoutes
   ).flatten
 
   //val swaggerEndpoints = SwaggerInterpreter().fromEndpoints[Future](endpointList, "Personal Finance API", "1.0.0")
@@ -39,7 +40,10 @@ class TapirRoutes extends LazyLogging with MainModule {
           expenseController.deleteExpenseByIdEndpoint,
           expenseController.addExpenseEndpoint,
           expenseController.patchExpenseEndpoint,
-          expenseController.listExpensesEndpoint
+          expenseController.listExpensesEndpoint,
+
+          categoryController.createCategoryEndpoint,
+          categoryController.getCategoriesEndpoint
         ), "Personal Finance API", "1.0.0")
     )
 
@@ -55,6 +59,9 @@ class TapirRoutes extends LazyLogging with MainModule {
           expenseController.addExpenseRoute,
           expenseController.updateExpenseRoute,
           expenseController.listExpensesRoute,
+
+          categoryController.createCategoryRoute,
+          categoryController.getCategoriesRoute,
       swaggerUIRoute)
   }
 
