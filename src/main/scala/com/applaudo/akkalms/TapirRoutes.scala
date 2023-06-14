@@ -2,14 +2,13 @@ package com.applaudo.akkalms
 
 import scala.concurrent.Future
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.server.{Directives, Route}
 import sttp.tapir.server.akkahttp.AkkaHttpServerInterpreter
-import sttp.tapir._
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import com.applaudo.akkalms.modules.MainModule
 import com.typesafe.scalalogging.LazyLogging
-
 import scala.io.StdIn
+import akka.http.scaladsl.server.Directives._
+import sttp.tapir.AnyEndpoint
 
 /**
  * Application's init point.
@@ -19,51 +18,29 @@ class TapirRoutes extends LazyLogging with MainModule {
 
   // mostly for execution context
   import actorSystem.dispatcher
-  val endpointList = List(
-    financeController.financeRoutes,
-    expenseController.expenseRoutes,
-    categoryController.categoryRoutes
+
+  val endpointList: List[AnyEndpoint] = List(
+    financeController.financeEndpoints,
+    expenseController.expenseEndpoints,
+    categoryController.categoryEndpoints
   ).flatten
 
-  //val swaggerEndpoints = SwaggerInterpreter().fromEndpoints[Future](endpointList, "Personal Finance API", "1.0.0")
-  //val swaggerEndpoints = SwaggerInterpreter().fromEndpoints[Future](endpointList.map(_.endpoint), "Personal Finance API", "1.0")
-
-  val swaggerUIRoute =
-    AkkaHttpServerInterpreter().toRoute(
-      SwaggerInterpreter().fromEndpoints[Future](
-        List(
-          financeController.createFinanceEndpoint,
-          financeController.patchFinanceEndpoint,
-          financeController.getFinanceEndpoint,
-
-          expenseController.getExpenseByIdEndpoint,
-          expenseController.deleteExpenseByIdEndpoint,
-          expenseController.addExpenseEndpoint,
-          expenseController.patchExpenseEndpoint,
-          expenseController.listExpensesEndpoint,
-
-          categoryController.createCategoryEndpoint,
-          categoryController.getCategoriesEndpoint
-        ), "Personal Finance API", "1.0.0")
+  val swaggerUIRoute = AkkaHttpServerInterpreter()
+    .toRoute(
+      SwaggerInterpreter().fromEndpoints[Future](endpointList, "Personal Finance API", "1.0.0")
     )
 
-  // starting the server
-  val resultRoute = {
-    import akka.http.scaladsl.server.Directives._
-    concat(financeController.createFinanceRoute,
-          financeController.updateFinanceRoute,
-          financeController.getFinanceRoute,
+  val routeList = List(
+    financeController.financeRoutes,
+    expenseController.expenseRoutes,
+    categoryController.categoryRoutes,
+  )
 
-          expenseController.getExpenseByIdRoute,
-          expenseController.deleteExpenseByIdRoute,
-          expenseController.addExpenseRoute,
-          expenseController.updateExpenseRoute,
-          expenseController.listExpensesRoute,
+  /**
+   * Result route. Contains all active endpoints and this route will be bound to the server.
+   */
+  var resultRoute = routeList.flatten.reduce((r1, r2) => r1 ~ r2) ~ swaggerUIRoute
 
-          categoryController.createCategoryRoute,
-          categoryController.getCategoriesRoute,
-      swaggerUIRoute)
-  }
 
   /**
    * Starts server using route above.

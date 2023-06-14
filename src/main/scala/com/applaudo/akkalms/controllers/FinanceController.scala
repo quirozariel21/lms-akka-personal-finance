@@ -133,6 +133,7 @@ class FinanceController(baseController: BaseController, query: CategoryDaoImpl)(
       Right[Unit, List[FinanceResponse]](response)
     }
 
+  val financeEndpoints = List(createFinanceEndpoint, patchFinanceEndpoint, getFinanceEndpoint)
   /** Convenient way to assemble endpoints from the controller and then concat this route to main route. */
   val financeRoutes: List[Route] = List(createFinanceRoute, updateFinanceRoute, getFinanceRoute)
 

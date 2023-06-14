@@ -3,10 +3,11 @@ package com.applaudo.akkalms.controllers
 import akka.http.scaladsl.server.Route
 import com.applaudo.akkalms.dao.CategoryDaoImpl
 import com.applaudo.akkalms.models.errors.{ErrorInfo, InternalServerError}
+import com.applaudo.akkalms.models.forms.CategoryPathArguments
 import com.applaudo.akkalms.models.requests.AddCategoryRequest
 import com.applaudo.akkalms.models.responses.CategoryResponse
 import sttp.tapir.json.circe.jsonBody
-import sttp.tapir.{Endpoint, EndpointInput, oneOf, oneOfVariant, statusCode, stringBody}
+import sttp.tapir.{AnyEndpoint, Endpoint, EndpointInput, oneOf, oneOfVariant, statusCode, stringBody}
 import sttp.tapir.generic.auto._
 import io.circe.generic.auto._
 import sttp.model.StatusCode
@@ -48,7 +49,25 @@ class CategoryController(baseController: BaseController, categoryDao: CategoryDa
           .description("List of categories")
       )
 
-  val createCategoryRoute: Route =
+  val deleteCategoryEndpoint: Endpoint[Unit, CategoryPathArguments, Unit, StatusCode, Any] =
+    baseController.baseEndpoint()
+      .delete
+      .in(EndpointInput.derived[CategoryPathArguments])
+      .summary("Delete a specific category")
+      .tag("Category")
+      .out(statusCode.description(StatusCode.NoContent, "Successful deleted the expense"))
+
+  val getCategoryByIdEndpoint: Endpoint[Unit, CategoryPathArguments, Unit, CategoryResponse, Any] =
+    baseController.baseEndpoint()
+      .get
+      .in(EndpointInput.derived[CategoryPathArguments])
+      .summary("Info for a specific category")
+      .tag("Category")
+      .out(
+        jsonBody[CategoryResponse]
+      )
+
+  val createCategoryRoute =
     AkkaHttpServerInterpreter().toRoute(createCategoryEndpoint.serverLogic(createCategoryLogic))
 
   def createCategoryLogic(categoryRequest: AddCategoryRequest): Future[Either[ErrorInfo, (CategoryResponse, StatusCode)]] =
@@ -62,7 +81,7 @@ class CategoryController(baseController: BaseController, categoryDao: CategoryDa
       }
     }
 
-  val getCategoriesRoute: Route =
+  val getCategoriesRoute =
     AkkaHttpServerInterpreter().toRoute(getCategoriesEndpoint.serverLogic( _ => {
       val categories =  categoryDao.getCategories()
       val response: List[CategoryResponse] = categories.map( c => CategoryResponse(c.id, c.name, c.description, c.createdAt, c.subcategoryId, c.isActive))
@@ -73,16 +92,48 @@ class CategoryController(baseController: BaseController, categoryDao: CategoryDa
 
 
 
-
+  /*//TODO delete
   def getCategoriesLogic(): Future[Either[Unit, List[CategoryResponse]]] = {
-    //Future {
     val categories =  categoryDao.getCategories()
     val response: List[CategoryResponse] = categories.map( c => CategoryResponse(c.id, c.name, c.description, c.createdAt, c.subcategoryId, c.isActive))
-    //Right[Unit, List[CategoryResponse]](List(CategoryResponse(1, "", None, LocalDateTime.now, None, false)))
-    Future.successful(Right(response))
-    //}
-  }
+    Future.successful[Either[Unit, List[CategoryResponse]]](Right(response))
+  }*/
 
+  val deleteCategoryRoute =
+    AkkaHttpServerInterpreter().toRoute(deleteCategoryEndpoint.serverLogic(
+      deleteCategoryLogic
+    ))
 
-  val categoryRoutes: List[Route] = List(createCategoryRoute, getCategoriesRoute)
+  def deleteCategoryLogic(pathArguments: CategoryPathArguments): Future[Either[Unit, StatusCode]] =
+    Future {
+      val categoryIdRequest = pathArguments.categoryId
+      val category = categoryDao.getCategoryById(categoryIdRequest)
+      if(category.isEmpty) {
+        throw new NullPointerException("Does not exist category")
+      }
+      val categoryId = categoryDao.deleteCategory(pathArguments.categoryId)
+      // TODO add logs
+      Right[Unit, StatusCode](StatusCode.NoContent)
+    }
+
+  def getCategoryByIdRoute: Route =
+    AkkaHttpServerInterpreter().toRoute(getCategoryByIdEndpoint.serverLogic(getCategoryByIdLogic))
+
+  def getCategoryByIdLogic(pathArguments: CategoryPathArguments): Future[Either[Unit, CategoryResponse]] =
+    Future {
+      val categoryIdRequest = pathArguments.categoryId
+      val category = categoryDao.getCategoryById(categoryIdRequest)
+      if(category.isEmpty) {
+        throw new NullPointerException("Does not exist category")
+      }
+      val categoryVal = category.get
+      // TODO add logs
+      Right[Unit, CategoryResponse](CategoryResponse(categoryVal.id, categoryVal.name, categoryVal.description, categoryVal.createdAt, categoryVal.subcategoryId, categoryVal.isActive))
+    }
+
+  val categoryEndpoints: List[AnyEndpoint] = List(createCategoryEndpoint, getCategoriesEndpoint,
+                                                  deleteCategoryEndpoint, getCategoryByIdEndpoint)
+
+  val categoryRoutes: List[Route] = List(createCategoryRoute, getCategoriesRoute,
+                                         deleteCategoryRoute, getCategoryByIdRoute)
 }
