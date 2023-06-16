@@ -129,6 +129,7 @@ class ExpenseController(baseController: BaseController)(implicit ec: ExecutionCo
 
   val expenseEndpoints: List[AnyEndpoint] = List(getExpenseByIdEndpoint, deleteExpenseByIdEndpoint,
     addExpenseEndpoint, patchExpenseEndpoint, listExpensesEndpoint)
+
   /** Convenient way to assemble endpoints from the controller and then concat this route to main route. */
   val expenseRoutes: List[Route] = List(getExpenseByIdRoute, deleteExpenseByIdRoute,
                                         addExpenseRoute, updateExpenseRoute, listExpensesRoute)

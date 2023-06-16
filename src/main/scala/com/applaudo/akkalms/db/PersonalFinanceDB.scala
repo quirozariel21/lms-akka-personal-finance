@@ -33,7 +33,7 @@ class PersonalFinanceDB extends Actor with ActorLogging {
       }
 
       val financeResponse: FinanceResponse = FinanceResponse(currentFinanceId,
-        addFinanceRequest.year, addFinanceRequest.month, incomes.toList)
+        addFinanceRequest.year, "addFinanceRequest.month", incomes.toList)
       finances = finances + (currentFinanceId -> financeResponse)
       log.info(s"Finances: $finances")
       currentFinanceId += 1

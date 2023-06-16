@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Route
 import com.applaudo.akkalms.dao.CategoryDaoImpl
 import com.applaudo.akkalms.models.errors.ErrorInfo
 import com.applaudo.akkalms.models.forms.GetFinancesEndpointArguments
-import com.applaudo.akkalms.models.requests.{AddFinanceRequest, AddIncomeRequest, UpdateFinanceRequest, UpdateIncomeRequest}
+import com.applaudo.akkalms.models.requests.{AddFinanceRequest, AddIncomeRequest, Months, UpdateFinanceRequest, UpdateIncomeRequest}
 import com.applaudo.akkalms.models.responses.{FinanceResponse, IncomeResponse}
 import com.applaudo.akkalms.models.errors.{BadRequest, ErrorInfo, InternalServerError, NotFound}
 import sttp.tapir.json.circe.jsonBody
@@ -20,6 +20,15 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class FinanceController(baseController: BaseController, query: CategoryDaoImpl)(implicit ec: ExecutionContext) {
 
+  import io.circe._
+  import io.circe.generic.auto._
+  import sttp.tapir._
+  import sttp.tapir.json.circe._
+  import sttp.tapir.generic.auto._
+
+  implicit val enumDecoder: Decoder[Months.Month] = Decoder.decodeEnumeration(Months)
+  implicit val enumEncoder: Encoder[Months.Month] = Encoder.encodeEnumeration(Months)
+
   val createFinanceEndpoint: Endpoint[Unit, AddFinanceRequest, ErrorInfo, (FinanceResponse, StatusCode), Any] =
     baseController.baseEndpoint()
       .post
@@ -29,7 +38,7 @@ class FinanceController(baseController: BaseController, query: CategoryDaoImpl)(
       .in(
         jsonBody[AddFinanceRequest]
           .description("Finance object that needs to be added")
-          .example(AddFinanceRequest(2022, "JANUARY", List(AddIncomeRequest("SALARY", 1000.27, "USD", None))))
+          //.example(AddFinanceRequest(2022, Months.C, List(AddIncomeRequest("SALARY", 1000.27, "USD", None))))
       )
       .out(jsonBody[FinanceResponse])
       .out(statusCode.description(StatusCode.Created, "Successful created the personal finance"))
@@ -101,7 +110,7 @@ class FinanceController(baseController: BaseController, query: CategoryDaoImpl)(
     Future {
       val addIncomeResponse: IncomeResponse = IncomeResponse(1, finance.incomes.head.incomeType, finance.incomes.head.amount, finance.incomes.head.currency, finance.incomes.head.note)
       val list: List[IncomeResponse] = List(addIncomeResponse)
-      val addFinanceResponse: FinanceResponse = FinanceResponse(1, finance.year, finance.month, list)
+      val addFinanceResponse: FinanceResponse = FinanceResponse(1, finance.year, "Months.C", list)
       if(1 == 1)
         Right((addFinanceResponse -> StatusCode.Created))
         //Right[Unit, (FinanceResponse, StatusCode)](addFinanceResponse -> StatusCode.Created)

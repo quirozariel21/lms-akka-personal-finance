@@ -39,7 +39,8 @@ class TapirRoutes extends LazyLogging with MainModule {
   /**
    * Result route. Contains all active endpoints and this route will be bound to the server.
    */
-  var resultRoute = routeList.flatten.reduce((r1, r2) => r1 ~ r2) ~ swaggerUIRoute
+  var resultRoute = routeList.flatten
+    .reduce((r1, r2) => r1 ~ r2) ~ swaggerUIRoute
 
 
   /**

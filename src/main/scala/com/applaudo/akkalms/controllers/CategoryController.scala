@@ -74,7 +74,7 @@ class CategoryController(baseController: BaseController, categoryDao: CategoryDa
     Future {
       if(1 == 1) {
         val category = categoryDao.saveCategory(categoryRequest.name, categoryRequest.description, categoryRequest.subcategoryId)
-        val categoryResponse = CategoryResponse(category.id, category.name, category.description, category.createdAt, category.subcategoryId, category.isActive)
+        val categoryResponse = CategoryResponse(category.id, category.name, category.description, category.createdAt, category.subcategoryId, category.isActive, None)
         Right((categoryResponse -> StatusCode.Created))
       } else {
         Left(InternalServerError("Some error"))
@@ -84,7 +84,29 @@ class CategoryController(baseController: BaseController, categoryDao: CategoryDa
   val getCategoriesRoute =
     AkkaHttpServerInterpreter().toRoute(getCategoriesEndpoint.serverLogic( _ => {
       val categories =  categoryDao.getCategories()
-      val response: List[CategoryResponse] = categories.map( c => CategoryResponse(c.id, c.name, c.description, c.createdAt, c.subcategoryId, c.isActive))
+
+      val response: List[CategoryResponse] = categories.map( c => {
+        var categoriesResponse = CategoryResponse(c.id, c.name, c.description, c.createdAt, c.subcategoryId, c.isActive, None)
+
+        if(c.subcategoryId.isEmpty && c.subcategories.get.nonEmpty) {
+          //TODO Refactor
+          val subcategories = c.subcategories.get;
+          val categoryArray = subcategories.split(",")
+          var list: List[CategoryResponse] = List()
+          for(myString <- categoryArray) {
+            val a = myString.split('|')
+            import java.time.format.DateTimeFormatter
+            val DATE_TIME_FORMATTER =
+              DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.[SSSSSS][SSS]");
+            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
+            val p = CategoryResponse(a(0).toLong, a(1), Some(a(2)), LocalDateTime.parse(a(3), DATE_TIME_FORMATTER), Some(a(4).toLong), a(5).toBoolean, None)
+            list = list :+ p
+          }
+          categoriesResponse = CategoryResponse(c.id, c.name, c.description, c.createdAt, c.subcategoryId, c.isActive, Some(list))
+        }
+        categoriesResponse
+      }
+      )
       Future.successful[Either[Unit, List[CategoryResponse]]](Right(response))
     }
     ))
@@ -128,7 +150,7 @@ class CategoryController(baseController: BaseController, categoryDao: CategoryDa
       }
       val categoryVal = category.get
       // TODO add logs
-      Right[Unit, CategoryResponse](CategoryResponse(categoryVal.id, categoryVal.name, categoryVal.description, categoryVal.createdAt, categoryVal.subcategoryId, categoryVal.isActive))
+      Right[Unit, CategoryResponse](CategoryResponse(categoryVal.id, categoryVal.name, categoryVal.description, categoryVal.createdAt, categoryVal.subcategoryId, categoryVal.isActive, None))
     }
 
   val categoryEndpoints: List[AnyEndpoint] = List(createCategoryEndpoint, getCategoriesEndpoint,

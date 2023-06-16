@@ -12,7 +12,7 @@ import scala.language.postfixOps
 import akka.stream.ActorMaterializer
 import com.applaudo.akkalms.db.PersonalFinanceDB
 import com.applaudo.akkalms.db.PersonalFinanceDB.AddFinance
-import com.applaudo.akkalms.models.requests.AddFinanceRequest
+import com.applaudo.akkalms.models.requests.{AddFinanceRequest, Months}
 import com.applaudo.akkalms.models.responses.{FinanceResponse, IncomeResponse}
 
 import scala.concurrent.duration._
@@ -73,6 +73,15 @@ object MarshallJSON extends App {
   /*implicit lazy val addFinanceRequestSchema: Schema[AddFinanceRequest] = //Schema.derive
   implicitly[Derived[Schema[AddFinanceRequest]]].value.modify(_.year)(_.description("How many fruits?"))*/
 
+  import io.circe._
+  import io.circe.generic.auto._
+  import sttp.tapir._
+  import sttp.tapir.json.circe._
+  import sttp.tapir.generic.auto._
+
+  implicit val enumDecoder: Decoder[Months.Month] = Decoder.decodeEnumeration(Months)
+  implicit val enumEncoder: Encoder[Months.Month] = Encoder.encodeEnumeration(Months)
+
   val createFinanceEndpoint: Endpoint[Unit, AddFinanceRequest, Unit, (FinanceResponse, StatusCode), Any] =
     baseEndpoint
       .post
@@ -109,7 +118,7 @@ def createFinanceLogic(finance: AddFinanceRequest): Future[Either[Unit, (Finance
     }
 
     val financeResponse: FinanceResponse = FinanceResponse(1,
-      finance.year, finance.month, incomes.toList)
+      finance.year, "", incomes.toList)
 
     Thread.sleep(9000)
     Right[Unit, (FinanceResponse, StatusCode)](financeResponse -> StatusCode.Created)

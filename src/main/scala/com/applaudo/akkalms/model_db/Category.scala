@@ -7,4 +7,5 @@ case class Category(id: Long,
                     description: Option[String],
                     createdAt: LocalDateTime,
                     subcategoryId: Option[Long],
-                    isActive: Boolean)
+                    isActive: Boolean,
+                    subcategories: Option[String])

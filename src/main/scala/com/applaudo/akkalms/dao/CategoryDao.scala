@@ -27,10 +27,17 @@ class CategoryDaoImpl extends CategoryDao {
   override def getCategories(): List[Category] = {
     val statement =
       sql"""
-         SELECT id, name, description, created_at, subcategory_id, is_active
-         FROM category
-         WHERE is_active=true
-         ORDER BY name
+         SELECT c1.id, c1.name, c1.description,
+                c1.created_at, c1.subcategory_id, c1.is_active, ARRAY_TO_STRING(
+                ARRAY_AGG (
+					                  c2.id || '|' || c2.name || '|' || c1.description || '|' || c1.created_at || '|' || c2.subcategory_id || '|' ||c1.is_active
+					                  ORDER BY c2.name
+                ), ',' ) AS subcategories
+         FROM category c1
+         LEFT JOIN category c2 ON c1.id = c2.subcategory_id
+         WHERE c1.is_active=true AND c1.subcategory_id IS NULL AND c2.is_active=true
+         GROUP BY c1.id
+         ORDER BY c1.name
          """
       statement.query[Category]
       .to[List]
@@ -50,7 +57,7 @@ class CategoryDaoImpl extends CategoryDao {
 
   override def saveCategory(name: String, description: Option[String], subcategoryId: Option[Long]): Category = {
     sql"INSERT INTO category (name, description, is_active, subcategory_id) values ($name, $description, true, $subcategoryId)"
-      .update.withUniqueGeneratedKeys[Category]("id", "name", "description", "created_at", "subcategory_id", "is_active")
+      .update.withUniqueGeneratedKeys[Category]("id", "name", "description", "created_at", "subcategory_id", "is_active", "subcategory_id")
       .transact(xa)
       .unsafeRunSync()
   }
