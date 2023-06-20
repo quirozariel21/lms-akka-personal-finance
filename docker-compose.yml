@@ -29,7 +29,7 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - ./sql/V1__create_schema.sql:/docker-entrypoint-initdb.d/V1__create_schema.sql
+      - ./sql/V1_0_0_0__create_tables.sql:/docker-entrypoint-initdb.d/V1_0_0_0__create_tables.sql
       - postgres:/var/lib/postgresql/data
 
 #  pgadmin-compose:

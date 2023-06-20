@@ -2,7 +2,7 @@ package com.applaudo.akkalms.modules
 
 import akka.actor.ActorSystem
 import com.applaudo.akkalms.controllers.{BaseController, CategoryController, ExpenseController, FinanceController}
-import com.applaudo.akkalms.dao.CategoryDaoImpl
+import com.applaudo.akkalms.dao.{CategoryDaoImpl, ExpenseDaoImpl, FinanceDaoImpl, IncomeDaoImpl}
 import com.softwaremill.macwire.wire
 import com.typesafe.config.{Config, ConfigFactory}
 
@@ -16,6 +16,10 @@ trait MainModule {
   lazy val baseController = wire[BaseController]
   lazy val financeController = wire[FinanceController]
   lazy val expenseController = wire[ExpenseController]
-  lazy val progressQueries = wire[CategoryDaoImpl]
   lazy val categoryController = wire[CategoryController]
+  lazy val progressQueries = wire[CategoryDaoImpl]
+  lazy val financeDao = wire[FinanceDaoImpl]
+  lazy val incomeDao = wire[IncomeDaoImpl]
+  lazy val expenseDao = wire[ExpenseDaoImpl]
+
 }

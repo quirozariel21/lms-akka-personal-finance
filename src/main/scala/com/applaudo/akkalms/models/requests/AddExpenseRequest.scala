@@ -1,10 +1,25 @@
 package com.applaudo.akkalms.models.requests
 
-import java.time.LocalDateTime
+import com.applaudo.akkalms.enums.Currencies
+import com.applaudo.akkalms.models.requests.AddExpenseRequest.amountValidator
+import sttp.tapir.Schema.annotations.{description, format, validate}
+import sttp.tapir.Validator
 
-case class AddExpenseRequest(categoryId: Int,
-                             subcategoryId: Int,
+import java.time.LocalDate
+
+
+
+object AddExpenseRequest {
+  val amountValidator = Validator.min(BigDecimal(0.01))
+}
+
+case class AddExpenseRequest(categoryId: Long,
+                             subcategoryId: Long,
                              note: Option[String],
+                             @validate(amountValidator)
                              amount: BigDecimal,
-                             currency: String,
-                             expenseDate: LocalDateTime)
+                             @description("Type of currency")
+                             currency: Currencies.Currency,
+                             @format("yyyy-MM-dd")
+                             expenseDate: LocalDate)
+

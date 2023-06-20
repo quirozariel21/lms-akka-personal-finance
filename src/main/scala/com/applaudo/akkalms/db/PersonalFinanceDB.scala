@@ -28,7 +28,7 @@ class PersonalFinanceDB extends Actor with ActorLogging {
 
       val incomes = new ListBuffer[IncomeResponse]()
       addFinanceRequest.incomes.foreach{ in =>
-        val incomeResponse = IncomeResponse(1, in.incomeType, in.amount, in.currency, in.note)
+        val incomeResponse = IncomeResponse(1, "in.incomeType", in.amount, "in.currency", in.note)
         incomes += incomeResponse
       }
 

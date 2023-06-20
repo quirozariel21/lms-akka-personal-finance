@@ -1,6 +1,9 @@
 package com.applaudo.akkalms.models.requests
 
-case class AddIncomeRequest(incomeType: String,
+import com.applaudo.akkalms.enums.{Currencies, IncomeTypes}
+
+case class AddIncomeRequest(incomeType: IncomeTypes.IncomeType,
                             amount: BigDecimal,
-                            currency: String,
+                            currency: Currencies.Currency,
                             note: Option[String])
+

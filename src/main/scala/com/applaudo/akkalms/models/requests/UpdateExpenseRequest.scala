@@ -1,6 +1,6 @@
 package com.applaudo.akkalms.models.requests
 
-import java.time.LocalDateTime
+import java.time.{LocalDate}
 
 case class UpdateExpenseRequest(id: Int,
                                 categoryId: Int,
@@ -8,4 +8,4 @@ case class UpdateExpenseRequest(id: Int,
                                 note: Option[String],
                                 amount: BigDecimal,
                                 currency: String,
-                                expenseDate: LocalDateTime)
+                                expenseDate: LocalDate)

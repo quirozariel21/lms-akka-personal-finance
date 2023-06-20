@@ -6,6 +6,6 @@ case class CategoryResponse(id: Long,
                             name: String,
                             description: Option[String],
                             createdAt: LocalDateTime,
-                            subcategoryId: Option[Long],
+                            parentId: Option[Long],
                             isActive: Boolean,
                             subcategories: Option[List[CategoryResponse]])

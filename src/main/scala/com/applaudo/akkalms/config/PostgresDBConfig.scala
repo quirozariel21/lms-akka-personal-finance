@@ -29,7 +29,6 @@ object PostgresDBConfig {
   val username: String = config.getString("postgres.username")
   val password: String = config.getString("postgres.password")
 
-
   def xa() = Transactor.fromDriverManager[IO](
     driver,
     url,

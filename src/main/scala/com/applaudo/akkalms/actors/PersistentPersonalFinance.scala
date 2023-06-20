@@ -12,7 +12,8 @@ import scala.language.postfixOps
 import akka.stream.ActorMaterializer
 import com.applaudo.akkalms.db.PersonalFinanceDB
 import com.applaudo.akkalms.db.PersonalFinanceDB.AddFinance
-import com.applaudo.akkalms.models.requests.{AddFinanceRequest, Months}
+import com.applaudo.akkalms.enums.{Currencies, IncomeTypes, Months}
+import com.applaudo.akkalms.models.requests.AddFinanceRequest
 import com.applaudo.akkalms.models.responses.{FinanceResponse, IncomeResponse}
 
 import scala.concurrent.duration._
@@ -82,6 +83,13 @@ object MarshallJSON extends App {
   implicit val enumDecoder: Decoder[Months.Month] = Decoder.decodeEnumeration(Months)
   implicit val enumEncoder: Encoder[Months.Month] = Encoder.encodeEnumeration(Months)
 
+  implicit val enumCurrencyDecoder: Decoder[Currencies.Currency] = Decoder.decodeEnumeration(Currencies)
+  implicit val enumCurrencyEncoder: Encoder[Currencies.Currency] = Encoder.encodeEnumeration(Currencies)
+
+  implicit val enumIncomeTypeDecoder: Decoder[IncomeTypes.IncomeType] = Decoder.decodeEnumeration(IncomeTypes)
+  implicit val enumIncomeTypeEncoder: Encoder[IncomeTypes.IncomeType] = Encoder.encodeEnumeration(IncomeTypes)
+
+
   val createFinanceEndpoint: Endpoint[Unit, AddFinanceRequest, Unit, (FinanceResponse, StatusCode), Any] =
     baseEndpoint
       .post
@@ -113,7 +121,7 @@ def createFinanceLogic(finance: AddFinanceRequest): Future[Either[Unit, (Finance
 
     val incomes = new ListBuffer[IncomeResponse]()
     finance.incomes.foreach{ in =>
-      val incomeResponse = IncomeResponse(1, in.incomeType, in.amount, in.currency, in.note)
+      val incomeResponse = IncomeResponse(1, "in.incomeType", in.amount, "in.currency", in.note)
       incomes += incomeResponse
     }
 

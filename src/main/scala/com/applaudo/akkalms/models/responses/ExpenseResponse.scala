@@ -1,6 +1,6 @@
 package com.applaudo.akkalms.models.responses
 
-import java.time.LocalDateTime
+import java.time.{LocalDate}
 
 case class ExpenseResponse(id: Long,
                            categoryId: Long,
@@ -8,5 +8,5 @@ case class ExpenseResponse(id: Long,
                            note: Option[String],
                            amount: BigDecimal,
                            currency: String,
-                           expenseDate: LocalDateTime,
+                           expenseDate: LocalDate,
                            financeId: Long)
