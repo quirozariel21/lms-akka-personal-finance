@@ -4,14 +4,9 @@ import cats.effect.IO
 import com.typesafe.config.{Config, ConfigFactory}
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import doobie.Transactor
-import doobie.hikari.HikariTransactor
-import pureconfig.ConfigConvert.fromReaderAndWriter
-import pureconfig.ConfigSource
-import pureconfig.generic.auto._
-import pureconfig.generic.DerivedConfigReader.anyValReader
 
 import scala.concurrent.ExecutionContext
-import pureconfig.ConvertHelpers._
+
 
 import org.flywaydb.core.api.configuration.FluentConfiguration
 import org.flywaydb.core.api.Location
@@ -21,7 +16,7 @@ import scala.jdk.CollectionConverters._
 import cats.effect.Sync
 import cats.implicits._
 
-object PostgresDBConfig {
+object DoobieConfig {
 
   val config: Config = ConfigFactory.load().getConfig("database")
   val driver: String = config.getString("postgres.driver")

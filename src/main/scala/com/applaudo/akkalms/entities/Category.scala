@@ -1,4 +1,4 @@
-package com.applaudo.akkalms.model_db
+package com.applaudo.akkalms.entities
 
 import java.time.LocalDateTime
 

@@ -2,10 +2,12 @@ package com.applaudo.akkalms
 
 import scala.concurrent.Future
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.server.Directives
 import sttp.tapir.server.akkahttp.AkkaHttpServerInterpreter
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import com.applaudo.akkalms.modules.MainModule
 import com.typesafe.scalalogging.LazyLogging
+
 import scala.io.StdIn
 import akka.http.scaladsl.server.Directives._
 import sttp.tapir.AnyEndpoint
@@ -25,9 +27,11 @@ class TapirRoutes extends LazyLogging with MainModule {
     categoryController.categoryEndpoints
   ).flatten
 
-  val swaggerUIRoute = AkkaHttpServerInterpreter()
+  val swaggerUIRoute = AkkaHttpServerInterpreter(errorHandler.customServerOptions)
     .toRoute(
-      SwaggerInterpreter().fromEndpoints[Future](endpointList, "Personal Finance API", "1.0.0")
+      SwaggerInterpreter()
+        .fromEndpoints[Future](endpointList, "Personal Finance API", "1.0.0")
+
     )
 
   val routeList = List(
@@ -42,6 +46,11 @@ class TapirRoutes extends LazyLogging with MainModule {
   var resultRoute = routeList.flatten
     .reduce((r1, r2) => r1 ~ r2) ~ swaggerUIRoute
 
+
+/*  Directives.concat(
+   // swaggerUIRoute,
+    AkkaHttpServerInterpreter(errorHandler.customServerOptions).toRoute(List(expenseController.getExpenseByIdRoute))
+  )*/
 
   /**
    * Starts server using route above.

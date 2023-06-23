@@ -6,7 +6,7 @@ import com.applaudo.akkalms.enums.Currencies
 import com.applaudo.akkalms.models.errors.{BadRequest, ErrorInfo, NoContent, NotFound}
 import com.applaudo.akkalms.models.forms.ExpensePathArguments
 import com.applaudo.akkalms.models.requests.{AddExpenseRequest, UpdateExpenseRequest}
-import com.applaudo.akkalms.models.responses.ExpenseResponse
+import com.applaudo.akkalms.models.responses.{ExpenseResponse, GetExpensesResponse}
 import com.typesafe.scalalogging.LazyLogging
 import io.circe.{Decoder, Encoder}
 import sttp.tapir.{Endpoint, path}
@@ -15,7 +15,6 @@ import sttp.tapir.json.circe.jsonBody
 import io.circe.generic.auto._
 import sttp.model.StatusCode
 import sttp.tapir._
-import sttp.tapir.generic.Derived
 import sttp.tapir.server.akkahttp.AkkaHttpServerInterpreter
 
 import java.time.LocalDate
@@ -24,10 +23,6 @@ import scala.concurrent.{ExecutionContext, Future}
 class ExpenseController(baseController: BaseController,
                         financeDao: FinanceDaoImpl,
                         expenseDao: ExpenseDaoImpl)(implicit ec: ExecutionContext) extends LazyLogging {
-
-/*  implicit val custom: Schema[UpdateExpenseEndpointArguments] = implicitly[Derived[Schema[UpdateExpenseEndpointArguments]]].value
-    .modify(_.financeId)(_.description(""))
-    .modify(_.request)(_.description(""))*/
 
   implicit val enumCurrencyDecoder: Decoder[Currencies.Currency] = Decoder.decodeEnumeration(Currencies)
   implicit val enumCurrencyEncoder: Encoder[Currencies.Currency] = Encoder.encodeEnumeration(Currencies)
@@ -49,10 +44,6 @@ class ExpenseController(baseController: BaseController,
       .summary("Delete a specific expense")
       .tag("Expense")
       .out(statusCode.description(StatusCode.NoContent,"Successful deleted the expense"))
-
-/*  implicit val customLizardSchema: Schema[AddExpenseRequest] = implicitly[Derived[Schema[AddExpenseRequest]]].value
-    //.modify(_.name)(_.description("how people refer to the lizard"))
-    .modify(_.amount)(_.validate(Validator.max(50)))*/
 
   val addExpenseEndpoint: Endpoint[Unit, (Long, AddExpenseRequest), ErrorInfo, (ExpenseResponse, StatusCode), Any] =
     baseController.baseEndpoint()
@@ -77,14 +68,14 @@ class ExpenseController(baseController: BaseController,
         .and(
           jsonBody[UpdateExpenseRequest]
             .description("Expense object that needs to be updated")
-            .example(UpdateExpenseRequest(1, 1, 2, None, 100.23, "USD", LocalDate.now))
+            .example(UpdateExpenseRequest(1, 1, 2, None, 100.23, Currencies.USD.toString, LocalDate.now))
         ))
       .summary("Update an expense")
       .tag("Expense")
       .out(jsonBody[ExpenseResponse])
       .out(statusCode.description(StatusCode.Ok, "Successful updated the expense"))
 
-  val listExpensesEndpoint: Endpoint[Unit, Long, ErrorInfo, List[ExpenseResponse], Any] =
+  val listExpensesEndpoint: Endpoint[Unit, Long, ErrorInfo, GetExpensesResponse, Any] =
     baseController.baseEndpoint()
       .get
       .in("finance" / path[Long]("financeId").description("ID of the finance that needs to be updated")
@@ -92,14 +83,15 @@ class ExpenseController(baseController: BaseController,
       )
       .summary("Returns a list of expenses")
       .tag("Expense")
-      .out(jsonBody[List[ExpenseResponse]])
+      .out(jsonBody[GetExpensesResponse])
+
 
   val getExpenseByIdRoute: Route =
     AkkaHttpServerInterpreter().toRoute(getExpenseByIdEndpoint.serverLogic(getExpenseByIdLogic))
 
   def getExpenseByIdLogic(pathArguments: ExpensePathArguments): Future[Either[ErrorInfo, ExpenseResponse]] = {
     logger.info("Getting expense with id: {}", pathArguments.expenseId)
-    val expense = expenseDao.getExpenseById(pathArguments.expenseId)
+    val expense = expenseDao.findById(pathArguments.expenseId)
 
     expense match {
       case Some(e) =>
@@ -118,7 +110,7 @@ class ExpenseController(baseController: BaseController,
 
   def deleteExpenseByIdLogic(pathArguments: ExpensePathArguments): Future[Either[ErrorInfo, StatusCode]] = {
     logger.info("Deleting expense with id: {}", pathArguments.expenseId)
-    val expenseVal = expenseDao.getExpenseById(pathArguments.expenseId)
+    val expenseVal = expenseDao.findById(pathArguments.expenseId)
     expenseVal match {
       case Some(e) => Future.successful(Right(StatusCode.NoContent))
       case None => Future.successful[Either[ErrorInfo, StatusCode]](Left(NotFound(s"Expense with id: ${pathArguments.expenseId} not found", StatusCode.NotFound.code)))
@@ -132,10 +124,11 @@ class ExpenseController(baseController: BaseController,
     val personalFinanceId = params._1
     val expenseRequest = params._2
     logger.info("Adding a new Expense for the personalFinanceId: {}", personalFinanceId)
-    val financeVal = financeDao.getFinanceById(personalFinanceId)
+    val financeVal = financeDao.findById(personalFinanceId)
+    logger.info("Personal finance with id: {} found", financeVal.get)
     financeVal match {
       case Some(fin) =>
-        val expense = expenseDao.saveExpense(expenseRequest, personalFinanceId)
+        val expense = expenseDao.save(expenseRequest, personalFinanceId)
         val expenseResponse = ExpenseResponse(expense.id, expense.categoryId, expense.subcategoryId,
                                               expense.note, expense.amount, expense.currency,
                                               expense.expenseDate, fin.id)
@@ -152,7 +145,7 @@ class ExpenseController(baseController: BaseController,
     val personalFinanceId = params._1
     val expenseRequest = params._2
     logger.info("Updating expense with id: {}", expenseRequest.id)
-    val financeVal = financeDao.getFinanceById(personalFinanceId)
+    val financeVal = financeDao.findById(personalFinanceId)
     financeVal match {
       case None => Left(BadRequest(s"Personal finance with id: $personalFinanceId is invalid", StatusCode.BadRequest.code))
       case Some(fin) =>
@@ -166,16 +159,18 @@ class ExpenseController(baseController: BaseController,
   val listExpensesRoute: Route =
     AkkaHttpServerInterpreter().toRoute(listExpensesEndpoint.serverLogic(listExpensesLogic))
 
-  def listExpensesLogic(financeId: Long): Future[Either[ErrorInfo, List[ExpenseResponse]]] = {
+  def listExpensesLogic(financeId: Long): Future[Either[ErrorInfo, GetExpensesResponse]] = {
     logger.info("Getting expenses for the personalFinanceId: {}", financeId)
-    val expenseRes =  expenseDao.getExpensesByPersonalFinanceId(financeId)
+    val expenseRes =  expenseDao.findByPersonalFinanceId(financeId)
     if(expenseRes.isEmpty) {
-      Future.successful[Either[ErrorInfo, List[ExpenseResponse]]](Left(NoContent))
+      Future.successful[Either[ErrorInfo, GetExpensesResponse]](Left(NoContent))
     } else {
-      val response = expenseRes.map( exp => {
+      val expenses = expenseRes.map( exp => {
         ExpenseResponse(exp.id, exp.categoryId, exp.subcategoryId, exp.note, exp.amount, exp.currency, exp.expenseDate, exp.personalFinanceId)
       })
-      Future.successful[Either[ErrorInfo, List[ExpenseResponse]]](Right(response))
+      val totalAmountAndCurrency = expenseDao.sumTotalAmount(financeId)
+      val response = GetExpensesResponse(totalAmountAndCurrency._1, totalAmountAndCurrency._2, expenses)
+      Future.successful[Either[ErrorInfo, GetExpensesResponse]](Right(response))
     }
   }
 

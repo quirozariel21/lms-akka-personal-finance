@@ -35,3 +35,6 @@ case class BadRequest(msg: String, code: Int) extends ErrorInfo
  * @param msg
  */
 case class InternalServerError(msg: String, code: Int) extends ErrorInfo
+
+/** Default case. */
+case class ErrorMessage(msg: String) extends ErrorInfo

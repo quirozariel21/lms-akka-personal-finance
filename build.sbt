@@ -53,13 +53,11 @@ libraryDependencies ++= Seq(
 
   "io.estatico" %% "newtype" % "0.4.4",
 
-  //Pureconfig
-  "com.github.pureconfig" %% "pureconfig"             % PureConfigVersion,
-  "com.github.pureconfig" %% "pureconfig-cats-effect" % PureConfigVersion,
+  //Akka persistence
+  "com.typesafe.akka" %% "akka-persistence-typed"     % akkaVersion,
 
 
-
-"com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
+  "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
   "org.scalatest" %% "scalatest" % "3.1.0" % Test

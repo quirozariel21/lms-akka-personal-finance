@@ -1,8 +1,8 @@
 package com.applaudo.akkalms.dao
 
 
-import com.applaudo.akkalms.config.PostgresDBConfig
-import com.applaudo.akkalms.model_db.Category
+import com.applaudo.akkalms.config.DoobieConfig
+import com.applaudo.akkalms.entities.Category
 import doobie.implicits.toSqlInterpolator
 import doobie.implicits._
 import cats.effect._
@@ -12,7 +12,7 @@ import doobie.postgres.implicits._
 
 trait CategoryDao {
 
-  val xa: Aux[IO, Unit] = PostgresDBConfig.xa
+  val xa: Aux[IO, Unit] = DoobieConfig.xa
 
   def getCategories: List[Category]
   def getCategoryById(id: Long): Option[Category]
