@@ -1,14 +1,13 @@
 package com.applaudo.akkalms.controllers
 
 import akka.http.scaladsl.server.Route
-import com.applaudo.akkalms.dao.{CategoryDaoImpl, FinanceDaoImpl, IncomeDaoImpl}
-import com.applaudo.akkalms.entities.GenerateSummaryEntity
+import com.applaudo.akkalms.dao.{FinanceDaoImpl, IncomeDaoImpl}
+import com.applaudo.akkalms.entities.{GenerateSummaryEntity, Income}
 import com.applaudo.akkalms.enums.{Currencies, IncomeTypes, Months}
-import com.applaudo.akkalms.models.errors.{BadRequest, ErrorInfo, InternalServerError, NoContent}
+import com.applaudo.akkalms.models.errors.{BadRequest, ErrorInfo, InternalServerError, NoContent, NotFound}
 import com.applaudo.akkalms.models.forms.{FinancePathArguments, GetFinancesEndpointArguments}
 import com.applaudo.akkalms.models.requests.{AddFinanceRequest, AddIncomeRequest, UpdateFinanceRequest, UpdateIncomeRequest}
 import com.applaudo.akkalms.models.responses.{BalanceResponse, CategorySummaryReportResponse, FinanceResponse, GenerateSummaryResponse, GetIncomeResponse, IncomeResponse, SubcategoryResponse}
-import com.applaudo.akkalms.services.FinanceService
 import com.typesafe.scalalogging.LazyLogging
 import io.circe._
 import io.circe.generic.auto._
@@ -16,8 +15,7 @@ import sttp.tapir._
 import sttp.tapir.json.circe._
 import sttp.tapir.generic.auto._
 import sttp.model.StatusCode
-import sttp.tapir.server.akkahttp.{AkkaHttpServerInterpreter, AkkaHttpServerOptions}
-import sttp.tapir.server.model.ValuedEndpointOutput
+import sttp.tapir.server.akkahttp.AkkaHttpServerInterpreter
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
@@ -63,13 +61,15 @@ class FinanceController(baseController: BaseController,
         jsonBody[UpdateFinanceRequest]
           .description("Finance object that needs to be updated")
           .example(
-            UpdateFinanceRequest(1, 2022, Months.JUNE.toString,
-              List(UpdateIncomeRequest(1, IncomeTypes.SALARY.toString, 1000.27, Currencies.USD.toString, None)))
+            UpdateFinanceRequest(1, 2022, Months.JUNE,
+                                    List(
+                                          UpdateIncomeRequest(Some(1), IncomeTypes.SALARY,
+                                                              1000.27, Currencies.USD, None)
+                                    ))
           )
       )
       .out(jsonBody[FinanceResponse])
       .out(statusCode.description(StatusCode.Ok, "Successful updated the personal finance"))
-
 
 
   val getFinanceEndpoint: Endpoint[Unit, GetFinancesEndpointArguments, ErrorInfo, List[FinanceResponse], Any] =
@@ -87,33 +87,10 @@ class FinanceController(baseController: BaseController,
   val generateSummaryEndpoint: Endpoint[Unit, FinancePathArguments, ErrorInfo, GenerateSummaryResponse, Any] =
     baseController.baseEndpoint()
       .get
-      .in(EndpointInput.derived[FinancePathArguments])
+      .in(EndpointInput.derived[FinancePathArguments] / "generate-summary")
       .summary("Generate summary report by financeId")
       .tag("Finance")
       .out(jsonBody[GenerateSummaryResponse])
-  //val customDecodeFailureHandler: DecodeFailureHandler = ???
-
-/*  val customServerOptions: AkkaHttpServerOptions = AkkaHttpServerOptions
-    .customiseInterceptors
-    //.decodeFailureHandler(customDecodeFailureHandler)
-    .decodeFailureHandler(ctx => {
-      ctx.failingInput match {
-        // when defining how a decode failure should be handled, we need to describe the output to be used, and
-        // a value for this output
-
-        case EndpointInput.derived. => Some(ValuedEndpointOutput(stringBody, StatusCode.Created))
-        case EndpointInput.Query(_, _, _, _) => Some(ValuedEndpointOutput(stringBody, "Incorrect format!!!"))
-        // in other cases, using the default behavior
-        case _ => DefaultDecodeFailureHandler.default(ctx)
-      }
-    })
-    .options*/
-
-/*  case class MyFailure(msg: String)
-  def myFailureResponse(m: String): ValuedEndpointOutput[_] =
-    ValuedEndpointOutput(jsonBody[MyFailure], MyFailure(m))
-  val myServerOptions: AkkaHttpServerOptions = AkkaHttpServerOptions
-    .customiseInterceptors.defaultHandlers(myFailureResponse).options*/
 
   // converting an endpoint to a route (providing server-side logic); extension method comes from imported packages
   val createFinanceRoute: Route =
@@ -131,23 +108,6 @@ class FinanceController(baseController: BaseController,
   def createFinanceLogic(financeRequest: AddFinanceRequest): Future[Either[ErrorInfo, (FinanceResponse, StatusCode)]] =
     Future {
       logger.info("Adding a new Personal Finance")
-      val financesVal = financeDao.findByYearAndMonth(Some(financeRequest.year), Some(financeRequest.month))
-      /*if(financesVal.nonEmpty) {
-        logger.info("Personal finance invalid!")
-        Left(BadRequest(s"Personal Finance with year:${financeRequest.year} and month: ${financeRequest.month.toString} already exists", StatusCode.BadRequest.code))
-      } else {
-        // TODO research rollback, for example if fails some income it should be rollback
-        val financeResDao = financeDao.save(financeRequest)
-        val ids: List[Int] = financeRequest.incomes.map(income => incomeDao.save(financeResDao.id, income))
-        val incomesResponse = ids.map(id => {
-          incomeDao.findById(id) match {
-            case Some(i) => IncomeResponse(i.id, i.name, i.amount, i.currency, i.note)
-            case None => throw new IllegalArgumentException("Some error happened")
-          }
-        })
-        val addFinanceResponse= FinanceResponse(financeResDao.id, financeResDao.year, financeResDao.month, incomesResponse)
-        Right(addFinanceResponse -> StatusCode.Created)
-      }*/
       financeDao.findByYearAndMonth(Some(financeRequest.year), Some(financeRequest.month)) match {
         case p :: ps =>
           logger.info("Personal finance invalid!")
@@ -156,11 +116,11 @@ class FinanceController(baseController: BaseController,
         case Nil =>
           // TODO research rollback, for example if fails some income it should be rollback
           val financeResDao = financeDao.save(financeRequest)
-          val ids: List[Int] = financeRequest.incomes.map(income => incomeDao.save(financeResDao.id, income))
-          val incomesResponse = ids.map(id => {
+          val ids: List[Income] = financeRequest.incomes.map(income => incomeDao.save(financeResDao.id, income))
+          val incomesResponse = ids.map(_.id).map(id => {
             incomeDao.findById(id) match {
               case Some(i) => IncomeResponse(i.id, i.name, i.amount, i.currency, i.note)
-              case None => throw new IllegalArgumentException(s"incomeId: ${id} not found")
+              case None => throw new IllegalArgumentException(s"incomeId: $id not found")
             }
           })
           val incomeTotalAmount = incomesResponse.map(_.amount).sum
@@ -172,17 +132,57 @@ class FinanceController(baseController: BaseController,
       }
     }
 
-  def updateFinanceLogic(finance: UpdateFinanceRequest): Future[Either[ErrorInfo, (FinanceResponse, StatusCode)]] =
+  def updateFinanceLogic(financeRequest: UpdateFinanceRequest): Future[Either[ErrorInfo, (FinanceResponse, StatusCode)]] =
     Future {
-      val incomeResponse: IncomeResponse = IncomeResponse(finance.incomes.head.id, finance.incomes.head.incomeType, finance.incomes.head.amount, finance.incomes.head.currency, finance.incomes.head.note)
-      val list: List[IncomeResponse] = List(incomeResponse)
-      val incomeTotalAmount = list.map(_.amount).sum
-      val currency = list.map(_.currency).head
-      logger.info("Income total amount: {} {}", incomeTotalAmount, currency)
-      val getIncomeResponse = GetIncomeResponse(incomeTotalAmount, currency, list)
-      val addFinanceResponse: FinanceResponse = FinanceResponse(finance.id, finance.year, finance.month, getIncomeResponse)
-      Right[ErrorInfo, (FinanceResponse, StatusCode)](addFinanceResponse -> StatusCode.Ok)
+      logger.info("Updating personal finance with id: {}", financeRequest.id)
+      var incomesResponses = new ListBuffer[IncomeResponse]
+      financeDao.findById(financeRequest.id) match {
+        case None =>
+          Left(NotFound(s"Personal finance with id: ${financeRequest.id} not found", StatusCode.NotFound.code))
+        case Some(financeEntity) =>
+          //val incomesPersisted = incomeDao.findByPersonalFinanceId(financeRequest.id) TODO delete already exists
+          financeRequest.incomes.foreach(incomeRequest =>
+          incomeRequest.id match {
+            case None =>
+              logger.info("Adding an new income with type: {}", incomeRequest.incomeType)
+              val incomeId = incomeDao.save(financeRequest.id,
+                                            AddIncomeRequest(incomeRequest.incomeType, incomeRequest.amount,
+                                                             incomeRequest.currency, incomeRequest.note))
+              incomesResponses += IncomeResponse(incomeId.id, incomeRequest.incomeType.toString,
+                                                 incomeRequest.amount, incomeRequest.currency.toString,
+                                                 incomeRequest.note)
+            case Some(i) =>
+              logger.info("Updating an income with id: {}", i)
+              incomeDao.findById(i) match {
+                case Some(inc) =>
+                  val incomeUpdated = incomeDao.update(financeRequest.id, incomeRequest)
+                  incomesResponses += IncomeResponse(incomeUpdated.id, incomeUpdated.name, incomeUpdated.amount,
+                                                     incomeUpdated.currency, incomeUpdated.note)
+                case None =>
+                  Left(InternalServerError(s"Unable to find income with id: $i", StatusCode.InternalServerError.code))
+
+              }
+          })
+
+          val financeId = financeDao.update(financeRequest)
+          val totalIncome = incomesResponses.map(_.amount).sum
+          val currency = incomesResponses.map(_.currency).head
+          val getIncomeResponse = GetIncomeResponse(totalIncome, currency, incomesResponses.toList)
+          val financeResponse = FinanceResponse(financeId, financeRequest.year, financeRequest.month.toString, getIncomeResponse)
+          Right[ErrorInfo, (FinanceResponse, StatusCode)](financeResponse -> StatusCode.Ok)
+      }
     }
+
+  //TODO
+  def buildIncomesResponse(incomes: String): List[IncomeResponse] = {
+    val incomesResponse: List[IncomeResponse] = incomes.split("#").toList.map(e => {
+      val incomeValues = e.split('|')
+      IncomeResponse(incomeValues(0).toLong, incomeValues(1),
+                     BigDecimal(incomeValues(3)), incomeValues(2),
+                     Some(incomeValues(4)))
+    })
+    incomesResponse
+  }
 
   def getFinanceLogic(queryArgs: GetFinancesEndpointArguments): Future[Either[ErrorInfo, List[FinanceResponse]]] =
     Future {
@@ -220,13 +220,9 @@ class FinanceController(baseController: BaseController,
         logger.info("mapCategory: {}", mapCategory)
         val finance = financeDao.findById(pathArguments.financeId).get
 
-        var categories = new ListBuffer[CategorySummaryReportResponse]
+        val categories = new ListBuffer[CategorySummaryReportResponse]
         for((k, v) <- mapCategory)
         {
-          //where k is key and v is value
-          print("Key:"+k+", ")
-          println("Value:"+v)
-
           val subcategories = v.map(v => SubcategoryResponse(v.subcategoryId, v.subcategoryName, v.note, v.amount, v.currency, v.expensedDate))
           val totalAmount = v.map(_.amount).sum
           val category = v.findLast(v => v.categoryName == k).get

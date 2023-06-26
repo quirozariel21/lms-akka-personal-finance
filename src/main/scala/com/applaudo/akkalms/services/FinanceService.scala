@@ -1,7 +1,8 @@
 package com.applaudo.akkalms.services
 
 import com.applaudo.akkalms.dao.{FinanceDaoImpl, IncomeDaoImpl}
-import com.applaudo.akkalms.entities.GenerateSummaryEntity
+import com.applaudo.akkalms.entities.{GenerateSummaryEntity, Income}
+import com.applaudo.akkalms.enums.{Currencies, IncomeTypes}
 import com.applaudo.akkalms.models.errors.{BadRequest, ErrorInfo, NoContent}
 import com.applaudo.akkalms.models.forms.{FinancePathArguments, GetFinancesEndpointArguments}
 import com.applaudo.akkalms.models.requests.{AddFinanceRequest, UpdateFinanceRequest}
@@ -43,8 +44,8 @@ class FinanceService(financeDao:FinanceDaoImpl,
         case Nil =>
           // TODO research rollback, for example if fails some income it should be rollback
           val financeResDao = financeDao.save(financeRequest)
-          val ids: List[Int] = financeRequest.incomes.map(income => incomeDao.save(financeResDao.id, income))
-          val incomesResponse = ids.map(id => {
+          val ids: List[Income] = financeRequest.incomes.map(income => incomeDao.save(financeResDao.id, income))
+          val incomesResponse = ids.map(_.id).map(id => {
             incomeDao.findById(id) match {
               case Some(i) => IncomeResponse(i.id, i.name, i.amount, i.currency, i.note)
               case None => throw new IllegalArgumentException(s"incomeId: ${id} not found")
@@ -61,13 +62,13 @@ class FinanceService(financeDao:FinanceDaoImpl,
 
   def updateFinance(finance: UpdateFinanceRequest): Future[Either[ErrorInfo, (FinanceResponse, StatusCode)]] =
     Future {
-      val incomeResponse: IncomeResponse = IncomeResponse(finance.incomes.head.id, finance.incomes.head.incomeType, finance.incomes.head.amount, finance.incomes.head.currency, finance.incomes.head.note)
+      val incomeResponse: IncomeResponse = IncomeResponse(1, IncomeTypes.SALARY.toString, finance.incomes.head.amount, Currencies.USD.toString, finance.incomes.head.note)
       val list: List[IncomeResponse] = List(incomeResponse)
       val incomeTotalAmount = list.map(_.amount).sum
       val currency = list.map(_.currency).head
       logger.info("Income total amount: {} {}", incomeTotalAmount, currency)
       val getIncomeResponse = GetIncomeResponse(incomeTotalAmount, currency, list)
-      val addFinanceResponse: FinanceResponse = FinanceResponse(finance.id, finance.year, finance.month, getIncomeResponse)
+      val addFinanceResponse: FinanceResponse = FinanceResponse(finance.id, finance.year, finance.month.toString, getIncomeResponse)
       Right[ErrorInfo, (FinanceResponse, StatusCode)](addFinanceResponse -> StatusCode.Ok)
     }
 

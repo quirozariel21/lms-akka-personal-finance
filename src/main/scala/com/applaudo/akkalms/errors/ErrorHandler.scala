@@ -11,7 +11,6 @@ import sttp.tapir.server.akkahttp.AkkaHttpServerOptions
 import sttp.tapir.server.interceptor.decodefailure.DefaultDecodeFailureHandler
 import sttp.tapir.server.interceptor.decodefailure.DefaultDecodeFailureHandler.FailureMessages
 import sttp.tapir.server.interceptor.exception.ExceptionHandler
-//import sttp.tapir.server.metrics.prometheus.PrometheusMetrics
 import sttp.tapir.server.model.ValuedEndpointOutput
 import io.circe.generic.auto._
 
@@ -23,8 +22,6 @@ import scala.concurrent.{ExecutionContext, Future}
  */
 class ErrorHandler(implicit ec: ExecutionContext) extends LazyLogging {
 
-  /** Prometheus metrics interceptor. */
-  //val prometheusMetrics = PrometheusMetrics.default[Future]()
 
   /**
    * Configuration for AkkaHttpServer routes.
@@ -46,9 +43,7 @@ class ErrorHandler(implicit ec: ExecutionContext) extends LazyLogging {
           // warning - log working incorrect when there are several endpoints with different methods
           DefaultDecodeFailureHandler.default(ctx)
         case _ =>
-          logger.info("======>>> 22222222222 ")
-          logger.info("======>>> 22222222222 ")
-          logger.info("======>>> 22222222222 ")
+          logger.info("[Handler] Working correctly.... ")
           DefaultDecodeFailureHandler.default(ctx)
       }
     })

@@ -3,7 +3,7 @@ package com.applaudo.akkalms.dao
 import cats.effect.IO
 import com.applaudo.akkalms.config.DoobieConfig
 import com.applaudo.akkalms.entities.{Finance, GenerateSummaryEntity}
-import com.applaudo.akkalms.models.requests.AddFinanceRequest
+import com.applaudo.akkalms.models.requests.{AddFinanceRequest, UpdateFinanceRequest}
 import doobie.implicits.toSqlInterpolator
 import doobie.implicits._
 import cats.effect._
@@ -16,6 +16,8 @@ trait FinanceDao {
   val xa: Aux[IO, Unit] = DoobieConfig.xa
 
   def save(finance: AddFinanceRequest): Finance
+  def update(finance: UpdateFinanceRequest): Int
+  def delete(personalFinanceId: Long): Int
   def findById(personalFinanceId: Long): Option[Finance]
   def findByYearAndMonth(year: Option[Int], month: Option[Months.Month]): List[Finance]
   def generateSummary(personalFinanceId: Long): List[GenerateSummaryEntity]
@@ -82,7 +84,7 @@ class FinanceDaoImpl extends FinanceDao {
               i.id || '|' || i.name || '|' || i.currency || '|' || i.amount || '|' || CASE WHEN i.note IS NULL THEN ' ' END || '|'
               ORDER BY i.id
             )
-          , '#' ) AS incomes
+          , '#' ) AS incomes, 0
           FROM personal_finance p
           LEFT JOIN income i ON i.personal_finance_id = p.id
         """                           ++
@@ -114,5 +116,28 @@ class FinanceDaoImpl extends FinanceDao {
            .to[List]
            .transact(xa)
            .unsafeRunSync()
+  }
+
+  override def update(finance: UpdateFinanceRequest): Int = {
+    sql"""
+         UPDATE personal_finance SET year = ${finance.year},
+                                     month = ${finance.month.toString}
+         WHERE id = ${finance.id} AND is_active = true
+       """
+      .update
+      .run
+      .transact(xa)
+      .unsafeRunSync()
+  }
+
+  override def delete(personalFinanceId: Long): Int = {
+    sql"""
+         UPDATE personal_finance SET is_active = false
+         WHERE id = $personalFinanceId
+       """
+      .update
+      .run
+      .transact(xa)
+      .unsafeRunSync()
   }
 }

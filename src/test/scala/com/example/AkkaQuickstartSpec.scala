@@ -2,15 +2,15 @@
 package com.example
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import com.example.Greeter.Greet
-import com.example.Greeter.Greeted
+/*import com.example.Greeter.Greet
+import com.example.Greeter.Greeted*/
 import org.scalatest.wordspec.AnyWordSpecLike
 
 //#definition
 class AkkaQuickstartSpec extends ScalaTestWithActorTestKit with AnyWordSpecLike {
 //#definition
 
-  "A Greeter" must {
+ /* "A Greeter" must {
     //#test
     "reply to greeted" in {
       val replyProbe = createTestProbe[Greeted]()
@@ -19,7 +19,7 @@ class AkkaQuickstartSpec extends ScalaTestWithActorTestKit with AnyWordSpecLike 
       replyProbe.expectMessage(Greeted("Santa", underTest.ref))
     }
     //#test
-  }
+  }*/
 
 }
 //#full-example

@@ -1,6 +1,6 @@
 package com.applaudo.akkalms.entities
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.LocalDate
 
 case class Expense(id: Long,
                    categoryId: Long,

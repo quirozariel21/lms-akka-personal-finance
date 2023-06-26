@@ -11,6 +11,11 @@ lazy val macwireVersion = "2.5.8"
 lazy val doobieVersion = "1.0.0-RC1"
 lazy val PureConfigVersion = "0.17.1"
 lazy val FlywayVersion = "9.2.0"
+lazy val ScalaTestVersion = "3.1.1"
+lazy val ScalaMockVersion = "4.4.0"
+
+lazy val leveldbVersion = "0.7"
+lazy val leveldbjniVersion = "1.8"
 
 // Run in a separate JVM, to make sure sbt waits until all threads have
 // finished before returning.
@@ -24,6 +29,10 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-stream" % akkaVersion,
   "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
   "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion,
+
+  // local levelDB stores
+  "org.iq80.leveldb" % "leveldb" % leveldbVersion,
+  "org.fusesource.leveldbjni" % "leveldbjni-all" % leveldbjniVersion,
 
   // tapir
   "com.softwaremill.sttp.tapir" %% "tapir-akka-http-server" % tapirVersion,
@@ -60,7 +69,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-  "org.scalatest" %% "scalatest" % "3.1.0" % Test
+  "org.scalatest" %% "scalatest" % "3.1.1" % Test,
+  "org.scalamock" %% "scalamock" % ScalaMockVersion % "test"
 
 
 )

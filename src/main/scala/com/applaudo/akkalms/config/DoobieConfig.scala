@@ -2,19 +2,9 @@ package com.applaudo.akkalms.config
 
 import cats.effect.IO
 import com.typesafe.config.{Config, ConfigFactory}
-import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import doobie.Transactor
-
-import scala.concurrent.ExecutionContext
-
-
-import org.flywaydb.core.api.configuration.FluentConfiguration
-import org.flywaydb.core.api.Location
 import org.flywaydb.core.Flyway
-import scala.jdk.CollectionConverters._
 
-import cats.effect.Sync
-import cats.implicits._
 
 object DoobieConfig {
 
@@ -43,20 +33,4 @@ object DoobieConfig {
 
   flyway.mixed(true).load().migrate().migrationsExecuted
 
-/*  private def logValidationErrorsIfAny(m: FluentConfiguration): Unit = {
-    val validated = m.ignorePendingMigrations(true)
-      .load()
-      .validateWithResult()
-
-    if (!validated.validationSuccessful)
-      for (error <- validated.invalidMigrations.asScala)
-        logger.warn(s"""
-                       |Failed validation:
-                       |  - version: ${error.version}
-                       |  - path: ${error.filepath}
-                       |  - description: ${error.description}
-                       |  - errorCode: ${error.errorDetails.errorCode}
-                       |  - errorMessage: ${error.errorDetails.errorMessage}
-        """.stripMargin.strip)
-  }*/
 }

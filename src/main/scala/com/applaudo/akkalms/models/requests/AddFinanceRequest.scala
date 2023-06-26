@@ -4,6 +4,7 @@ import com.applaudo.akkalms.enums.Months
 import com.applaudo.akkalms.models.requests.AddFinanceRequest.yearValidation
 import sttp.tapir.Schema.annotations.validate
 import sttp.tapir.Validator
+
 object AddFinanceRequest {
   val yearValidation = Validator.inRange(2020, 2100)
 }
